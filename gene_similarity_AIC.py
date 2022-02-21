@@ -6,7 +6,8 @@ import sys
 import os
 import operator
 import mmap
-import sample_GO_tree
+import math
+# import sample_GO_tree
 
 
 def cmd_input_validation():
@@ -22,6 +23,8 @@ def cmd_input_validation():
     if operator.not_(os.path.exists(file1)) and operator.not_(os.path.exists(file2)):
         raise FileNotFoundError("files do not exist.")
 
+    file1_content = None
+    file2_content = None
     try:
         file1_content = open(file1)
         file2_content = open(file2)
@@ -64,12 +67,80 @@ def read_file(file_name):
         mm.close()
 
     text = text.decode("utf-8").strip().split(',')
+    print(f"{file_name} Ontology Annotation: {text}")
+
+    # Adding Information Content Values
+    for term in text:
+        information_content[term] = 2
 
     return information_content
+
+def to_knowledge(information_content):
+    return 1 / information_content
+
+def list_to_knowledge(information_content):
+    for item in information_content:
+        value = information_content[item]
+        information_content[item] = to_knowledge(value)
+    return information_content
+
+
+def to_semantic_weight(knowledge):
+    return 1 / (1 + pow(math.e, (-1) * knowledge))
+
+
+def list_to_semantic_weight(knowledge):
+    for item in knowledge:
+        value = knowledge
+        knowledge[item] = to_semantic_weight(value)
+    return knowledge
+
+
+def gene_sim(ontology_m, m, n):
+    polynomial = 1 / (m + n)
+    summation = 0
+    for row in ontology_m:
+        for col in ontology_m:
+            summation += ontology_m[row][col]
+    return polynomial * summation
 
 
 if __name__ == '__main__':
     input1, input2 = cmd_input_validation()
-
+    print()
     gene1_information_content = read_file(input1)
     gene2_information_content = read_file(input2)
+    # print(gene1_information_content)
+
+    # convert gene annotation ontology to knowledge
+    gene1_knowledge = list_to_knowledge(gene1_information_content)
+    gene2_knowledge = list_to_knowledge(gene2_information_content)
+
+    # convert gene annotation ontology knowledge to semantic weight
+    gene1_sw = list_to_semantic_weight(gene1_knowledge)
+    gene2_sw = list_to_semantic_weight(gene2_knowledge)
+
+    # calculate semantic value for gene1 and gene2 ontology annotations
+    # @TODO information content of all ancestors
+    gene1_sv = {}
+    gene2_sv = {}
+
+    # calculate similarity between gene1 and gene2 ontology annotations
+    ontology_matrix = [[None for x in range(len(gene1_sv))] for y in range(len(gene2_sv))]
+    gene1_counter = 0
+    gene2_counter = 0
+    for gene1_ont in gene1_sv:
+        for gene2_ont in gene2_sv:
+            sum_semantic_weights = 0
+            # add up semantic weights of all common ancestors
+            # @TODO loop through and find common ancestors
+
+            sim = sum_semantic_weights / (gene1_sv[gene1_ont] + gene2_sw[gene2_ont])
+            ontology_matrix[gene1_counter][gene2_counter] = sim
+            gene2_counter += 1
+        gene2_counter = 0
+        gene1_counter += 1
+
+    # calculate gene similarities
+    score = gene_sim(ontology_matrix, len(gene1_sv), len(gene2_sv))
+    print(f"Gene similarity score is: {score}")

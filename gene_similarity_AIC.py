@@ -7,11 +7,10 @@ import os
 import operator
 import mmap
 import math
-# import sample_GO_tree
+import sample_GO_tree
 
 
 def cmd_input_validation():
-
     if len(sys.argv) != 3:
         raise ValueError("Usage: python gene_similarity <gene 1 Ontology Annotation> <gene 2 Ontology Annotation>")
 
@@ -39,8 +38,25 @@ def cmd_input_validation():
     return file1, file2
 
 
-def read_file(file_name):
+def get_information_content(term):
+    value = 0
 
+    # Find IC from source
+    # @TODO get IC from calculation result
+
+    return value
+
+
+def get_ancestor(term, tree, ancestors):
+    ancestors.add(term)
+    for ancestor in tree[term]:
+        if ancestor == "None":
+            return
+        else:
+            get_ancestor(ancestor, tree, ancestors)
+
+
+def read_file(file_name):
     information_content = {}
     text = None
     with open(file_name, "r+t") as file_content:
@@ -50,19 +66,6 @@ def read_file(file_name):
         # read from file and place in dictionary
         text = mm.read()
 
-
-        '''
-        # read content via standard file methods
-        print(mm.readline())  # prints b"Hello Python!\n"
-        # read content via slice notation
-        print(mm[:5])  # prints b"Hello"
-        # update content using slice notation;
-        # note that new content must have same size
-        mm[6:] = b" world!\n"
-        # ... and read again using standard file methods
-        mm.seek(0)
-        print(mm.readline())  # prints b"Hello  world!\n"
-        '''
         # close the map
         mm.close()
 
@@ -71,17 +74,19 @@ def read_file(file_name):
 
     # Adding Information Content Values
     for term in text:
-        information_content[term] = 2
+        information_content[term] = get_information_content(term)
 
     return information_content
+
 
 def to_knowledge(information_content):
     return 1 / information_content
 
+
 def list_to_knowledge(information_content):
-    for item in information_content:
-        value = information_content[item]
-        information_content[item] = to_knowledge(value)
+    for key in information_content:
+        value = information_content[key]
+        information_content[key] = to_knowledge(value)
     return information_content
 
 
@@ -90,9 +95,9 @@ def to_semantic_weight(knowledge):
 
 
 def list_to_semantic_weight(knowledge):
-    for item in knowledge:
+    for key in knowledge:
         value = knowledge
-        knowledge[item] = to_semantic_weight(value)
+        knowledge[key] = to_semantic_weight(value)
     return knowledge
 
 
@@ -120,8 +125,28 @@ if __name__ == '__main__':
     gene1_sw = list_to_semantic_weight(gene1_knowledge)
     gene2_sw = list_to_semantic_weight(gene2_knowledge)
 
+    # find ancestor terms of ontology annotations
+    ancestor_dict = {}
+
+    # find sets of ancestors for each annotation
+    for k in gene1_sw:
+        ancestor_set = set()
+        get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
+        ancestor_dict[k] = ancestor_set
+    for k in gene2_sw:
+        ancestor_set = set()
+        if ancestor_dict not in ancestor_dict.keys():
+            get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
+            ancestor_dict[k] = ancestor_set
+
+    # find semantic weight from all ancestor terms
+    sw_dictionary = {}
+    for k in ancestor_dict:
+        for element in ancestor_dict[k]:
+            sw_dictionary[element] = to_semantic_weight(to_knowledge(get_information_content(element)))
+
     # calculate semantic value for gene1 and gene2 ontology annotations
-    # @TODO information content of all ancestors
+    # @TODO calculate from information content of all ancestors (including the term)
     gene1_sv = {}
     gene2_sv = {}
 

@@ -39,7 +39,7 @@ def cmd_input_validation():
 
 
 def get_information_content(term):
-    value = 0
+    value = 2
 
     # Find IC from source
     # @TODO get IC from calculation result
@@ -96,13 +96,13 @@ def to_semantic_weight(knowledge):
 
 def list_to_semantic_weight(knowledge):
     for key in knowledge:
-        value = knowledge
+        value = knowledge[key]
         knowledge[key] = to_semantic_weight(value)
     return knowledge
 
 
 def gene_sim(ontology_m, m, n):
-    polynomial = 1 / (m + n)
+    polynomial = 1 / (m * n)
     summation = 0
     for row in ontology_m:
         for col in ontology_m:
@@ -110,12 +110,11 @@ def gene_sim(ontology_m, m, n):
     return polynomial * summation
 
 
-if __name__ == '__main__':
+def main():
     input1, input2 = cmd_input_validation()
     print()
     gene1_information_content = read_file(input1)
     gene2_information_content = read_file(input2)
-    # print(gene1_information_content)
 
     # convert gene annotation ontology to knowledge
     gene1_knowledge = list_to_knowledge(gene1_information_content)
@@ -135,7 +134,7 @@ if __name__ == '__main__':
         ancestor_dict[k] = ancestor_set
     for k in gene2_sw:
         ancestor_set = set()
-        if ancestor_dict not in ancestor_dict.keys():
+        if k not in ancestor_dict.keys():
             get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
             ancestor_dict[k] = ancestor_set
 
@@ -169,3 +168,7 @@ if __name__ == '__main__':
     # calculate gene similarities
     score = gene_sim(ontology_matrix, len(gene1_sv), len(gene2_sv))
     print(f"Gene similarity score is: {score}")
+
+
+if __name__ == '__main__':
+    main()

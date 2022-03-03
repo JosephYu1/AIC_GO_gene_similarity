@@ -43,7 +43,7 @@ def get_information_content(term):
 
     # Find IC from source
     # @TODO get IC from calculation result
-
+    
     return value
 
 
@@ -83,15 +83,15 @@ def to_knowledge(information_content):
     return 1 / information_content
 
 
+def to_semantic_weight(knowledge):
+    return float(1 / (1 + pow(math.e, (-1) * knowledge)))
+
+
 def list_to_knowledge(information_content):
     for key in information_content:
         value = information_content[key]
         information_content[key] = to_knowledge(value)
     return information_content
-
-
-def to_semantic_weight(knowledge):
-    return float(1 / (1 + pow(math.e, (-1) * knowledge)))
 
 
 def list_to_semantic_weight(knowledge):

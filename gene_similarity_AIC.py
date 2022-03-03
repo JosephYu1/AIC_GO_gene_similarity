@@ -91,7 +91,7 @@ def list_to_knowledge(information_content):
 
 
 def to_semantic_weight(knowledge):
-    return 1 / (1 + pow(math.e, (-1) * knowledge))
+    return float(1 / (1 + pow(math.e, (-1) * knowledge)))
 
 
 def list_to_semantic_weight(knowledge):
@@ -105,14 +105,14 @@ def gene_sim(ontology_m, m, n):
     polynomial = 1 / (m * n)
     summation = 0
     for row in ontology_m:
-        for col in ontology_m:
-            summation += ontology_m[row][col]
+        for col in row:
+            summation += col
     return polynomial * summation
 
 
 def main():
     input1, input2 = cmd_input_validation()
-    print()
+    print()  # Print new line separation
     gene1_information_content = read_file(input1)
     gene2_information_content = read_file(input2)
 
@@ -145,24 +145,41 @@ def main():
             sw_dictionary[element] = to_semantic_weight(to_knowledge(get_information_content(element)))
 
     # calculate semantic value for gene1 and gene2 ontology annotations
-    # @TODO calculate from information content of all ancestors (including the term)
+    # from information content of all ancestors (inclusive)
     gene1_sv = {}
     gene2_sv = {}
+    for gene in gene1_sw:
+        sum_sv = 0
+        term_set = ancestor_dict[gene]
+        for term in term_set:
+            sum_sv += get_information_content(term)
+
+        gene1_sv[gene] = sum_sv
+
+    for gene in gene2_sw:
+        sum_sv = 0
+        term_set = ancestor_dict[gene]
+        for term in term_set:
+            sum_sv += get_information_content(term)
+
+        gene2_sv[gene] = sum_sv
 
     # calculate similarity between gene1 and gene2 ontology annotations
-    ontology_matrix = [[None for x in range(len(gene1_sv))] for y in range(len(gene2_sv))]
+    ontology_matrix = [[None for x in range(len(gene2_sv))] for y in range(len(gene1_sv))]
+
     gene1_counter = 0
-    gene2_counter = 0
     for gene1_ont in gene1_sv:
+        gene2_counter = 0
         for gene2_ont in gene2_sv:
             sum_semantic_weights = 0
             # add up semantic weights of all common ancestors
-            # @TODO loop through and find common ancestors
+            common_ancestors = ancestor_dict[gene1_ont].intersection(ancestor_dict[gene2_ont])
+            for ancestor_term in common_ancestors:
+                sum_semantic_weights += sw_dictionary[ancestor_term]
 
             sim = sum_semantic_weights / (gene1_sv[gene1_ont] + gene2_sw[gene2_ont])
             ontology_matrix[gene1_counter][gene2_counter] = sim
             gene2_counter += 1
-        gene2_counter = 0
         gene1_counter += 1
 
     # calculate gene similarities

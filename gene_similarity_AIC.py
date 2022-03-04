@@ -7,8 +7,11 @@ import os
 import operator
 import mmap
 import math
-import sample_GO_tree
 
+import sample_GO_tree
+import annotation_data
+
+information_content_dict = {}
 
 def cmd_input_validation():
     if len(sys.argv) != 3:
@@ -38,13 +41,18 @@ def cmd_input_validation():
     return file1, file2
 
 
-def get_information_content(term):
-    value = 2
+# @TODO return actual annotation data
+def get_annotation(term):
+    return annotation_data.annotation_data_dict[term]
 
-    # Find IC from source
-    # @TODO get IC from calculation result
-    
-    return value
+
+# @TODO function for calculating the IC from data
+def calculate_information_content():
+    pass
+
+
+def get_information_content(term):
+    return information_content_dict[term]
 
 
 def get_ancestor(term, tree, ancestors):
@@ -57,7 +65,6 @@ def get_ancestor(term, tree, ancestors):
 
 
 def read_file(file_name):
-    information_content = {}
     text = None
     with open(file_name, "r+t") as file_content:
         # memory-map the file, size 0 means whole file
@@ -72,8 +79,13 @@ def read_file(file_name):
     text = text.decode("utf-8").strip().split(',')
     print(f"{file_name} Ontology Annotation: {text}")
 
+    return text
+
+
+def list_to_information_content(terms):
+    information_content = {}
     # Adding Information Content Values
-    for term in text:
+    for term in terms:
         information_content[term] = get_information_content(term)
 
     return information_content
@@ -113,8 +125,26 @@ def gene_sim(ontology_m, m, n):
 def main():
     input1, input2 = cmd_input_validation()
     print()  # Print new line separation
-    gene1_information_content = read_file(input1)
-    gene2_information_content = read_file(input2)
+
+    terms1 = read_file(input1)
+    terms2 = read_file(input2)
+
+    # find ancestor terms of ontology annotations
+    ancestor_dict = {}
+
+    # find sets of ancestors for each annotation
+    for k in terms1:
+        ancestor_set = set()
+        get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
+        ancestor_dict[k] = ancestor_set
+    for k in terms2:
+        ancestor_set = set()
+        if k not in ancestor_dict.keys():
+            get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
+            ancestor_dict[k] = ancestor_set
+
+    gene1_information_content = list_to_information_content(terms1)
+    gene2_information_content = list_to_information_content(terms2)
 
     # convert gene annotation ontology to knowledge
     gene1_knowledge = list_to_knowledge(gene1_information_content)
@@ -124,20 +154,6 @@ def main():
     gene1_sw = list_to_semantic_weight(gene1_knowledge)
     gene2_sw = list_to_semantic_weight(gene2_knowledge)
 
-    # find ancestor terms of ontology annotations
-    ancestor_dict = {}
-
-    # find sets of ancestors for each annotation
-    for k in gene1_sw:
-        ancestor_set = set()
-        get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
-        ancestor_dict[k] = ancestor_set
-    for k in gene2_sw:
-        ancestor_set = set()
-        if k not in ancestor_dict.keys():
-            get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
-            ancestor_dict[k] = ancestor_set
-
     # find semantic weight from all ancestor terms
     sw_dictionary = {}
     for k in ancestor_dict:
@@ -145,14 +161,14 @@ def main():
             sw_dictionary[element] = to_semantic_weight(to_knowledge(get_information_content(element)))
 
     # calculate semantic value for gene1 and gene2 ontology annotations
-    # from information content of all ancestors (inclusive)
+    # from semantic weight of all ancestors (inclusive)
     gene1_sv = {}
     gene2_sv = {}
     for gene in gene1_sw:
         sum_sv = 0
         term_set = ancestor_dict[gene]
         for term in term_set:
-            sum_sv += get_information_content(term)
+            sum_sv += sw_dictionary[term]
 
         gene1_sv[gene] = sum_sv
 
@@ -160,7 +176,7 @@ def main():
         sum_sv = 0
         term_set = ancestor_dict[gene]
         for term in term_set:
-            sum_sv += get_information_content(term)
+            sum_sv += sw_dictionary[term]
 
         gene2_sv[gene] = sum_sv
 

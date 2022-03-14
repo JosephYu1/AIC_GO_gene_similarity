@@ -13,6 +13,7 @@ import annotation_data
 
 information_content_dict = {}
 
+
 def cmd_input_validation():
     if len(sys.argv) != 3:
         raise ValueError("Usage: python gene_similarity <gene 1 Ontology Annotation> <gene 2 Ontology Annotation>")
@@ -43,12 +44,49 @@ def cmd_input_validation():
 
 # @TODO return actual annotation data
 def get_annotation(term):
-    return annotation_data.annotation_data_dict[term]
+    return annotation_data.annotation_data_dict[term][0]
+
+
+def get_annotation_type(term):
+    return annotation_data.annotation_data_dict[term][1]
+
+
+def traverse(term, tree, frequency_result, finished):
+    if tree[term][0] == "None":
+        if term not in frequency_result.keys():
+            frequency_result[term] = int(get_annotation(term))
+            finished.add(term)
+    else:
+        for child in tree[term]:
+            if term not in frequency_result.keys():
+                frequency_result[term] = int(get_annotation(term))
+            # print(f"{term} {child} {frequency_result}")
+            if child not in finished:
+                traverse(child, tree, frequency_result, finished)
+                finished.add(child)
+            frequency_result[term] += frequency_result[child]
 
 
 # @TODO function for calculating the IC from data
-def calculate_information_content():
-    pass
+def calculate_information_content(tree, frequency_result):
+    # @TODO traverse tree and calculate IC
+    finished = set()
+    traverse("GO:0008150", tree, frequency_result, finished)
+    traverse("GO:0003674", tree, frequency_result, finished)
+
+    bp_root = frequency_result["GO:0008150"]
+    ml_root = frequency_result["GO:0003674"]
+    for term in frequency_result:
+        try:
+            if get_annotation_type(term) == "BP":
+                frequency_result[term] = (-1) * math.log(frequency_result[term] / bp_root, 10)
+            else:
+                frequency_result[term] = (-1) * math.log(frequency_result[term] / ml_root, 10)
+        except ZeroDivisionError:
+            if get_annotation_type(term) == "BP":
+                print(frequency_result[term], " ", frequency_result["GO:0008150"])
+            else:
+                print(frequency_result[term], " ", frequency_result["GO:0003674"])
 
 
 def get_information_content(term):
@@ -126,6 +164,8 @@ def main():
     input1, input2 = cmd_input_validation()
     print()  # Print new line separation
 
+    global information_content_dict
+    calculate_information_content(sample_GO_tree.GO_tree_sample, information_content_dict)
     terms1 = read_file(input1)
     terms2 = read_file(input2)
 
@@ -133,14 +173,15 @@ def main():
     ancestor_dict = {}
 
     # find sets of ancestors for each annotation
+    # @TODO remove sample data
     for k in terms1:
         ancestor_set = set()
-        get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
+        get_ancestor(k, sample_GO_tree.GO_tree_sample_reversed, ancestor_set)
         ancestor_dict[k] = ancestor_set
     for k in terms2:
         ancestor_set = set()
         if k not in ancestor_dict.keys():
-            get_ancestor(k, sample_GO_tree.GO_tree_sample, ancestor_set)
+            get_ancestor(k, sample_GO_tree.GO_tree_sample_reversed, ancestor_set)
             ancestor_dict[k] = ancestor_set
 
     gene1_information_content = list_to_information_content(terms1)
@@ -158,7 +199,10 @@ def main():
     sw_dictionary = {}
     for k in ancestor_dict:
         for element in ancestor_dict[k]:
-            sw_dictionary[element] = to_semantic_weight(to_knowledge(get_information_content(element)))
+            if element == "GO:0008150" or element == "GO:0003674":
+                sw_dictionary[element] = 0
+            else:
+                sw_dictionary[element] = to_semantic_weight(to_knowledge(get_information_content(element)))
 
     # calculate semantic value for gene1 and gene2 ontology annotations
     # from semantic weight of all ancestors (inclusive)
